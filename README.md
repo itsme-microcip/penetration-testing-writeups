@@ -6,7 +6,7 @@ A personal collection of writeups documenting Capture The Flag (CTF) challenges 
 
 ## About This Repository
 
-These writeups serve as a personal knowledge base and portfolio of practical offensive security skills developed through hands-on lab environments. They are written in the style of formal technical reports — mirroring the documentation standards expected in real-world penetration testing engagements — and span a range of attack techniques across network services, web applications, Windows and Linux systems, database servers, and post-exploitation scenarios.
+These writeups serve as a personal knowledge base and portfolio of practical offensive security skills developed through hands-on lab environments. They are written in the style of formal technical reports mirroring the documentation standards expected in real-world penetration testing engagements and span a range of attack techniques across network services, web applications, Windows and Linux systems, database servers, and post-exploitation scenarios.
 
 Each report includes:
 
