@@ -1,4 +1,4 @@
-# Host & Network Penetration Testing: System/Host-Based Attacks — Skill Check Lab 1
+# Host & Network Penetration Testing: System/Host-Based Attacks: Skill Check Lab 1
 ### Capture The Flag Lab Writeup
 
 ---
@@ -7,12 +7,12 @@
 
 1. [Introduction](#1-introduction)
 2. [Lab Environment Overview](#2-lab-environment-overview)
-3. [Reconnaissance — Target 1](#3-reconnaissance--target-1)
-4. [Flag 1 — Shellshock RCE via CGI Script (Target 1)](#4-flag-1--shellshock-rce-via-cgi-script-target-1)
-5. [Flag 2 — Hidden File Discovery in Web Root (Target 1)](#5-flag-2--hidden-file-discovery-in-web-root-target-1)
-6. [Reconnaissance — Target 2](#6-reconnaissance--target-2)
-7. [Flag 3 — libssh Authentication Bypass (Target 2)](#7-flag-3--libssh-authentication-bypass-target-2)
-8. [Flag 4 — Privilege Escalation via SUID Binary Hijacking (Target 2)](#8-flag-4--privilege-escalation-via-suid-binary-hijacking-target-2)
+3. [Reconnaissance: Target 1](#3-reconnaissance--target-1)
+4. [Flag 1: Shellshock RCE via CGI Script (Target 1)](#4-flag-1--shellshock-rce-via-cgi-script-target-1)
+5. [Flag 2: Hidden File Discovery in Web Root (Target 1)](#5-flag-2--hidden-file-discovery-in-web-root-target-1)
+6. [Reconnaissance: Target 2](#6-reconnaissance--target-2)
+7. [Flag 3: libssh Authentication Bypass (Target 2)](#7-flag-3--libssh-authentication-bypass-target-2)
+8. [Flag 4: Privilege Escalation via SUID Binary Hijacking (Target 2)](#8-flag-4--privilege-escalation-via-suid-binary-hijacking-target-2)
 9. [Summary of Findings](#9-summary-of-findings)
 10. [Conclusions and Lessons Learned](#10-conclusions-and-lessons-learned)
 
@@ -65,13 +65,13 @@ All activities were performed within an isolated, authorised lab environment. No
 | Flag   | Target   | Hint                                                                                    |
 |--------|----------|-----------------------------------------------------------------------------------------|
 | Flag 1 | Target 1 | Check the root (`/`) directory for a file that might hold the key to the first flag.   |
-| Flag 2 | Target 1 | Explore `/opt/apache/htdocs/` carefully — something may be hidden there.               |
+| Flag 2 | Target 1 | Explore `/opt/apache/htdocs/` carefully, something may be hidden there.               |
 | Flag 3 | Target 2 | Investigate the user's home directory using `libssh_auth_bypass`.                      |
 | Flag 4 | Target 2 | Look into the `/root` directory to find the hidden flag.                               |
 
 ---
 
-## 3. Reconnaissance — Target 1
+## 3. Reconnaissance: Target 1
 
 A full TCP port scan with service version detection was performed against Target 1.
 
@@ -96,11 +96,11 @@ Target 1 exposed a single service: an Apache 2.4.6 web server. Navigating to `ht
 Your browser, that is, Firefox, is supported!
 ```
 
-The `.cgi` extension is significant. CGI (Common Gateway Interface) scripts are server-side executables invoked by the web server to generate dynamic responses. On systems where CGI scripts are executed by Bash, the **Shellshock** vulnerability (CVE-2014-6271, disclosed September 2014) allows an attacker to inject arbitrary commands into specially crafted HTTP headers. Apache 2.4.6 was released in July 2013 — prior to the public disclosure of Shellshock — and the presence of a CGI endpoint made this the primary hypothesis for exploitation.
+The `.cgi` extension is significant. CGI (Common Gateway Interface) scripts are server-side executables invoked by the web server to generate dynamic responses. On systems where CGI scripts are executed by Bash, the **Shellshock** vulnerability (CVE-2014-6271, disclosed September 2014) allows an attacker to inject arbitrary commands into specially crafted HTTP headers. Apache 2.4.6 was released in July 2013, prior to the public disclosure of Shellshock, and the presence of a CGI endpoint made this the primary hypothesis for exploitation.
 
 ---
 
-## 4. Flag 1 — Shellshock RCE via CGI Script (Target 1)
+## 4. Flag 1: Shellshock RCE via CGI Script (Target 1)
 
 ### Hint
 
@@ -199,7 +199,7 @@ FLAG1_{######################################}
 
 ### Analysis
 
-The Shellshock vulnerability (CVE-2014-6271) is over a decade old but remains present in unpatched or legacy systems. In this case, Apache 2.4.6 on Ubuntu 14.04 — itself end-of-life since April 2019 — provided the execution environment. The attack required no credentials and produced a fully interactive reverse shell with minimal configuration. The flag stored at the filesystem root was immediately accessible to the `daemon` service account, indicating an absence of file permission controls on sensitive data.
+The Shellshock vulnerability (CVE-2014-6271) is over a decade old but remains present in unpatched or legacy systems. In this case, Apache 2.4.6 on Ubuntu 14.04 itself end-of-life since April 2019 provided the execution environment. The attack required no credentials and produced a fully interactive reverse shell with minimal configuration. The flag stored at the filesystem root was immediately accessible to the `daemon` service account, indicating an absence of file permission controls on sensitive data.
 
 ### Flag Captured
 
@@ -209,7 +209,7 @@ FLAG1_{######################################}
 
 ---
 
-## 5. Flag 2 — Hidden File Discovery in Web Root (Target 1)
+## 5. Flag 2: Hidden File Discovery in Web Root (Target 1)
 
 ### Hint
 
@@ -217,7 +217,7 @@ FLAG1_{######################################}
 
 ### Methodology
 
-With an active Meterpreter session and shell access to Target 1, enumerating the web root directory specified in the hint was straightforward. The key was the word "hidden" in the hint — on Linux systems, files prefixed with a dot (`.`) are hidden from standard `ls` output and require the `-a` flag to be revealed.
+With an active Meterpreter session and shell access to Target 1, enumerating the web root directory specified in the hint was straightforward. The key was the word "hidden" in the hint on Linux systems, files prefixed with a dot (`.`) are hidden from standard `ls` output and require the `-a` flag to be revealed.
 
 ### Step 1: Initial Directory Listing
 
@@ -233,7 +233,7 @@ index.html
 static
 ```
 
-The standard listing revealed only the expected web application files — no flag was immediately visible.
+The standard listing revealed only the expected web application files, no flag was immediately visible.
 
 ### Step 2: List Hidden Files
 
@@ -266,7 +266,7 @@ FLAG2_{######################################}
 
 ### Analysis
 
-Linux dot-files are a common technique for concealing files from casual inspection, but they provide no security benefit against an attacker with shell access who knows to use `ls -a`. Storing a flag (or in a real-world context, any sensitive file) within the web server's document root — even as a hidden file — is a significant risk: had directory listing been enabled on the Apache instance, the file would have been directly downloadable by any web visitor. Post-exploitation enumeration should always include hidden file inspection across all directories of interest.
+Linux dot-files are a common technique for concealing files from casual inspection, but they provide no security benefit against an attacker with shell access who knows to use `ls -a`. Storing a flag (or in a real-world context, any sensitive file) within the web server's document root, even as a hidden file, is a significant risk: had directory listing been enabled on the Apache instance, the file would have been directly downloadable by any web visitor. Post-exploitation enumeration should always include hidden file inspection across all directories of interest.
 
 ### Flag Captured
 
@@ -276,7 +276,7 @@ FLAG2_{######################################}
 
 ---
 
-## 6. Reconnaissance — Target 2
+## 6. Reconnaissance: Target 2
 
 A full TCP port scan with service version detection was performed against Target 2.
 
@@ -295,7 +295,7 @@ PORT   STATE SERVICE VERSION
 
 ### Analysis
 
-Target 2 exposed a single service: SSH running on libssh version 0.8.3. This version is directly affected by **CVE-2018-10933**, a critical authentication bypass vulnerability disclosed in October 2018. The flaw allows an unauthenticated client to send an `SSH2_MSG_USERAUTH_SUCCESS` message to the server — a message that is normally only sent *by* the server to indicate successful authentication — tricking the server into granting an authenticated session without any valid credentials being supplied. The hint explicitly referenced `libssh_auth_bypass`, confirming this as the intended attack vector.
+Target 2 exposed a single service: SSH running on libssh version 0.8.3. This version is directly affected by **CVE-2018-10933**, a critical authentication bypass vulnerability disclosed in October 2018. The flaw allows an unauthenticated client to send an `SSH2_MSG_USERAUTH_SUCCESS` message to the server, a message that is normally only sent *by* the server to indicate successful authentication, tricking the server into granting an authenticated session without any valid credentials being supplied. The hint explicitly referenced `libssh_auth_bypass`, confirming this as the intended attack vector.
 
 A new workspace was created for Target 2:
 
@@ -307,7 +307,7 @@ msf6 > setg RHOST target2.ine.local
 
 ---
 
-## 7. Flag 3 — libssh Authentication Bypass (Target 2)
+## 7. Flag 3: libssh Authentication Bypass (Target 2)
 
 ### Hint
 
@@ -373,7 +373,7 @@ greetings
 welcome
 ```
 
-The home directory contained `flag.txt`, as well as two binary files — `greetings` and `welcome` — that would become relevant for Flag 4.
+The home directory contained `flag.txt`, as well as two binary files: `greetings` and `welcome`, that would become relevant for Flag 4.
 
 ### Step 4: Retrieve Flag 3
 
@@ -391,7 +391,7 @@ FLAG3_{######################################}
 
 ### Analysis
 
-CVE-2018-10933 is a protocol-level authentication bypass — the attacker does not need to know any valid username or password. Any service running libssh 0.8.3 (or earlier affected versions) is vulnerable, regardless of its authentication configuration. This is a critical severity vulnerability that was patched in libssh 0.7.6 and 0.8.4. Its presence on a network-exposed SSH service constitutes a complete failure of authentication as a security control, granting any unauthenticated attacker command execution in the context of the service account.
+CVE-2018-10933 is a protocol-level authentication bypass, the attacker does not need to know any valid username or password. Any service running libssh 0.8.3 (or earlier affected versions) is vulnerable, regardless of its authentication configuration. This is a critical severity vulnerability that was patched in libssh 0.7.6 and 0.8.4. Its presence on a network-exposed SSH service constitutes a complete failure of authentication as a security control, granting any unauthenticated attacker command execution in the context of the service account.
 
 ### Flag Captured
 
@@ -401,7 +401,7 @@ FLAG3_{######################################}
 
 ---
 
-## 8. Flag 4 — Privilege Escalation via SUID Binary Hijacking (Target 2)
+## 8. Flag 4: Privilege Escalation via SUID Binary Hijacking (Target 2)
 
 ### Hint
 
@@ -409,7 +409,7 @@ FLAG3_{######################################}
 
 ### Methodology
 
-Flag 4 was located in `/root`, a directory readable only by the root user. Accessing it required elevating privileges from the `user` account obtained via the libssh bypass. The two binaries discovered in `/home/user` during Flag 3 enumeration — `greetings` and `welcome` — provided the escalation path.
+Flag 4 was located in `/root`, a directory readable only by the root user. Accessing it required elevating privileges from the `user` account obtained via the libssh bypass. The two binaries discovered in `/home/user` during Flag 3 enumeration: `greetings` and `welcome` provided the escalation path.
 
 ### Step 1: Establish an Interactive Shell
 
@@ -452,7 +452,7 @@ The `strings` utility was used to inspect the `welcome` binary for readable text
 strings welcome
 ```
 
-The output revealed that `welcome` calls `greetings` — without using an absolute path, meaning it relies on the `PATH` environment variable to locate the executable. This is the critical detail: because `welcome` runs as root via SUID, and it executes `greetings` from the current working directory (or `PATH`), replacing `greetings` with a custom executable will cause `welcome` to execute that replacement with root privileges.
+The output revealed that `welcome` calls `greetings` without using an absolute path, meaning it relies on the `PATH` environment variable to locate the executable. This is the critical detail: because `welcome` runs as root via SUID, and it executes `greetings` from the current working directory (or `PATH`), replacing `greetings` with a custom executable will cause `welcome` to execute that replacement with root privileges.
 
 ### Step 3: Remove the Original greetings Binary
 
@@ -495,7 +495,7 @@ FLAG4_{######################################}
 
 ### Analysis
 
-This privilege escalation is a textbook example of a **SUID binary hijacking** attack. The vulnerability arises from two compounding weaknesses: the `welcome` binary was granted the SUID bit (causing it to execute as root), and it called a dependent executable (`greetings`) without specifying its absolute path. When the dependent binary is writable or replaceable by a lower-privileged user — as was the case here, since both files resided in a directory owned by `user` — an attacker can substitute their own executable and inherit the SUID binary's elevated privileges upon execution.
+This privilege escalation is a textbook example of a **SUID binary hijacking** attack. The vulnerability arises from two compounding weaknesses: the `welcome` binary was granted the SUID bit (causing it to execute as root), and it called a dependent executable (`greetings`) without specifying its absolute path. When the dependent binary is writable or replaceable by a lower-privileged user, as was the case here, since both files resided in a directory owned by `user` an attacker can substitute their own executable and inherit the SUID binary's elevated privileges upon execution.
 
 In a production environment, SUID binaries should be audited regularly using `find / -perm -4000 -type f 2>/dev/null`. Any SUID binary that calls external executables must do so using absolute paths, and the directories containing SUID binaries must not be writable by unprivileged users.
 
@@ -511,26 +511,26 @@ FLAG4_{######################################}
 
 | Flag   | Target   | Service      | Port | Vulnerability                          | CVE              | Privilege Level  | Risk     |
 |--------|----------|--------------|------|----------------------------------------|------------------|------------------|----------|
-| Flag 1 | Target 1 | HTTP / CGI   | 80   | Shellshock — Bash env variable injection | CVE-2014-6271  | daemon (service) | Critical |
+| Flag 1 | Target 1 | HTTP / CGI   | 80   | Shellshock: Bash env variable injection | CVE-2014-6271  | daemon (service) | Critical |
 | Flag 2 | Target 1 | Filesystem   | —    | Hidden file in web root (dot-file)     | —                | daemon (service) | Medium   |
 | Flag 3 | Target 2 | SSH (libssh) | 22   | libssh authentication bypass          | CVE-2018-10933   | user             | Critical |
 | Flag 4 | Target 2 | Local        | —    | SUID binary hijacking (path injection) | —                | root             | Critical |
 
 ### Vulnerability Summary
 
-1. **Shellshock (CVE-2014-6271) on Target 1** — Apache 2.4.6 serving a Bash-backed CGI script on an Ubuntu 14.04 system. The vulnerability allowed unauthenticated remote code execution via a malformed `User-Agent` HTTP header, yielding a reverse Meterpreter shell as the `daemon` service account.
+1. **Shellshock (CVE-2014-6271) on Target 1**: Apache 2.4.6 serving a Bash-backed CGI script on an Ubuntu 14.04 system. The vulnerability allowed unauthenticated remote code execution via a malformed `User-Agent` HTTP header, yielding a reverse Meterpreter shell as the `daemon` service account.
 
-2. **Sensitive File in Web Root (Target 1)** — A flag file prefixed with a dot was stored within the Apache document root. While hidden from standard directory listings, the file was immediately accessible to any process with filesystem access to the web root, including the compromised `daemon` account.
+2. **Sensitive File in Web Root (Target 1)**: A flag file prefixed with a dot was stored within the Apache document root. While hidden from standard directory listings, the file was immediately accessible to any process with filesystem access to the web root, including the compromised `daemon` account.
 
-3. **libssh Authentication Bypass (CVE-2018-10933) on Target 2** — The SSH service was running libssh 0.8.3, a version vulnerable to a protocol-level authentication bypass. An unauthenticated attacker could gain remote command execution as the `user` account without supplying any credentials.
+3. **libssh Authentication Bypass (CVE-2018-10933) on Target 2**: The SSH service was running libssh 0.8.3, a version vulnerable to a protocol-level authentication bypass. An unauthenticated attacker could gain remote command execution as the `user` account without supplying any credentials.
 
-4. **SUID Binary Hijacking on Target 2** — The `welcome` binary was SUID-root and called a dependent executable (`greetings`) without an absolute path. Because both files resided in a user-writable directory, the `greetings` binary could be replaced with a malicious script, which was then executed with root privileges when `welcome` was invoked, yielding a root shell.
+4. **SUID Binary Hijacking on Target 2**: The `welcome` binary was SUID-root and called a dependent executable (`greetings`) without an absolute path. Because both files resided in a user-writable directory, the `greetings` binary could be replaced with a malicious script, which was then executed with root privileges when `welcome` was invoked, yielding a root shell.
 
 ---
 
 ## 10. Conclusions and Lessons Learned
 
-This Skill Check Lab required independently identifying two separate vulnerability classes across two distinct targets and chaining findings — particularly on Target 2, where the libssh bypass provided initial access and the SUID binary misconfiguration provided the escalation path to root. Neither target required guessing credentials; both were fully compromised through known, documented vulnerabilities affecting outdated or misconfigured software.
+This Skill Check Lab required independently identifying two separate vulnerability classes across two distinct targets and chaining findings, particularly on Target 2, where the libssh bypass provided initial access and the SUID binary misconfiguration provided the escalation path to root. Neither target required guessing credentials; both were fully compromised through known, documented vulnerabilities affecting outdated or misconfigured software.
 
 ### Attack Chain Summary
 
@@ -568,10 +568,10 @@ Nmap → libssh 0.8.3 on port 22 identified
 
 - **Directories containing SUID binaries must not be user-writable.** Even if a SUID binary uses absolute paths internally, if the binary itself resides in a user-writable directory, it can be replaced entirely. File and directory ownership must be reviewed as part of any hardening process.
 
-- **Hidden dot-files provide no security protection.** The `-a` flag to `ls` reveals all dot-prefixed files immediately. Sensitive files must be protected through proper file permissions and placement outside web-accessible directories — not through filename conventions.
+- **Hidden dot-files provide no security protection.** The `-a` flag to `ls` reveals all dot-prefixed files immediately. Sensitive files must be protected through proper file permissions and placement outside web-accessible directories not through filename conventions.
 
 ---
 
 *Report completed: June 25, 2026*
-*Lab: Host & Network Penetration Testing: System/Host-Based Attacks — Skill Check Lab 1*
+*Lab: Host & Network Penetration Testing: System/Host-Based Attacks: Skill Check Lab 1*
 *Platform: INE Security / eLearnSecurity*
