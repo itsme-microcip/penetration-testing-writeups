@@ -1,4 +1,4 @@
-# Assessment Methodologies: Footprinting and Scanning — CTF 1
+# Assessment Methodologies: Footprinting and Scanning: CTF 1
 ### Capture The Flag Lab Writeup
 
 ---
@@ -8,10 +8,10 @@
 1. [Introduction](#1-introduction)
 2. [Lab Environment Overview](#2-lab-environment-overview)
 3. [Reconnaissance Summary](#3-reconnaissance-summary)
-4. [Flag 1 — HTTP Response Header Analysis](#4-flag-1--http-response-header-analysis)
-5. [Flag 2 — robots.txt Enumeration and Directory Traversal](#5-flag-2--robotstxt-enumeration-and-directory-traversal)
-6. [Flag 3 — Anonymous FTP Access and Credential Discovery](#6-flag-3--anonymous-ftp-access-and-credential-discovery)
-7. [Flag 4 — MySQL Database Enumeration](#7-flag-4--mysql-database-enumeration)
+4. [Flag 1: HTTP Response Header Analysis](#4-flag-1--http-response-header-analysis)
+5. [Flag 2: robots.txt Enumeration and Directory Traversal](#5-flag-2--robotstxt-enumeration-and-directory-traversal)
+6. [Flag 3: Anonymous FTP Access and Credential Discovery](#6-flag-3--anonymous-ftp-access-and-credential-discovery)
+7. [Flag 4: MySQL Database Enumeration](#7-flag-4--mysql-database-enumeration)
 8. [Summary of Findings](#8-summary-of-findings)
 9. [Conclusions and Lessons Learned](#9-conclusions-and-lessons-learned)
 
@@ -76,11 +76,11 @@ nmap -sV target.ine.local
 | 993/tcp  | open  | ssl/imap  | Dovecot imapd (Ubuntu)                                |
 | 3306/tcp | open  | mysql     | MySQL 8.0.39-0ubuntu0.22.04.1                         |
 
-The scan revealed a broad set of services, including an FTP server with potential anonymous access (port 21), a web server (port 80), and a MySQL database instance (port 3306) — all of which were subsequently targeted in this assessment.
+The scan revealed a broad set of services, including an FTP server with potential anonymous access (port 21), a web server (port 80), and a MySQL database instance (port 3306) all of which were subsequently targeted in this assessment.
 
 ---
 
-## 4. Flag 1 — HTTP Response Header Analysis
+## 4. Flag 1: HTTP Response Header Analysis
 
 ### Hint
 
@@ -88,7 +88,7 @@ The scan revealed a broad set of services, including an FTP server with potentia
 
 ### Methodology
 
-HTTP response headers are transmitted by a web server with every reply and commonly contain metadata about the server software, framework version, and configuration details. In some cases, developers or administrators inadvertently embed sensitive information — such as internal identifiers or flags — within custom or standard headers.
+HTTP response headers are transmitted by a web server with every reply and commonly contain metadata about the server software, framework version, and configuration details. In some cases, developers or administrators inadvertently embed sensitive information, such as internal identifiers or flags, within custom or standard headers.
 
 To inspect the full HTTP response headers of the target web server, `curl` was used with the `-v` (verbose) flag, which causes the tool to display both request and response headers in their entirety.
 
@@ -116,23 +116,23 @@ curl http://target.ine.local -v
 < Date: Tue, 23 Jun 2026 06:20:06 GMT
 < Content-Type: text/html; charset=utf-8
 < Content-Length: 2557
-< Server: FLAG1_b2311210d93d43eda4e2356b46be9f41
+< Server: FLAG1_############################
 < Connection: close
 ```
 
 ### Analysis
 
-The response contained two distinct `Server` headers. The first, `Werkzeug/3.0.6 Python/3.10.12`, is a legitimate disclosure of the web framework in use. The second, however, was anomalous — a duplicate `Server` header containing the flag value. This represents a deliberate misconfiguration that mirrors a class of real-world vulnerability where sensitive data is leaked through HTTP headers.
+The response contained two distinct `Server` headers. The first, `Werkzeug/3.0.6 Python/3.10.12`, is a legitimate disclosure of the web framework in use. The second, however, was anomalous, a duplicate `Server` header containing the flag value. This represents a deliberate misconfiguration that mirrors a class of real-world vulnerability where sensitive data is leaked through HTTP headers.
 
 ### Flag Captured
 
 ```
-FLAG1_b2311210d93d43eda4e2356b46be9f41
+FLAG1_############################
 ```
 
 ---
 
-## 5. Flag 2 — robots.txt Enumeration and Directory Traversal
+## 5. Flag 2: robots.txt Enumeration and Directory Traversal
 
 ### Hint
 
@@ -140,7 +140,7 @@ FLAG1_b2311210d93d43eda4e2356b46be9f41
 
 ### Methodology
 
-The `robots.txt` file is a standard web convention used to instruct web crawlers and search engine bots on which paths they should or should not index. While intended to manage crawler behavior, this file is publicly accessible and frequently discloses the existence of directories that the administrator wishes to keep out of search engine results — often including sensitive or administrative paths.
+The `robots.txt` file is a standard web convention used to instruct web crawlers and search engine bots on which paths they should or should not index. While intended to manage crawler behavior, this file is publicly accessible and frequently discloses the existence of directories that the administrator wishes to keep out of search engine results, often including sensitive or administrative paths.
 
 By navigating directly to `http://target.ine.local/robots.txt`, the file's contents were retrieved and examined for disallowed paths.
 
@@ -182,14 +182,14 @@ The flag was retrieved directly from the file at this endpoint.
 ### Flag Captured
 
 ```
-FLAG2_[value retrieved from flag.txt]
+FLAG2_##########################
 ```
 
 > *Note: The exact flag string was retrieved from the file at the time of the assessment. The `[value]` notation above represents the redacted flag content for report formatting purposes.*
 
 ---
 
-## 6. Flag 3 — Anonymous FTP Access and Credential Discovery
+## 6. Flag 3: Anonymous FTP Access and Credential Discovery
 
 ### Hint
 
@@ -252,17 +252,17 @@ db_admin:password@123
 
 ### Analysis
 
-The anonymous FTP access exposed not only the flag but also a plaintext credentials file containing valid database credentials (`db_admin:password@123`). This represents a critical secondary finding, as these credentials were subsequently leveraged to access the MySQL database service — directly enabling the capture of Flag 4.
+The anonymous FTP access exposed not only the flag but also a plaintext credentials file containing valid database credentials (`db_admin:password@123`). This represents a critical secondary finding, as these credentials were subsequently leveraged to access the MySQL database service, directly enabling the capture of Flag 4.
 
 ### Flag Captured
 
 ```
-FLAG3_[value retrieved from flag.txt]
+FLAG3_##########################
 ```
 
 ---
 
-## 7. Flag 4 — MySQL Database Enumeration
+## 7. Flag 4: MySQL Database Enumeration
 
 ### Hint
 
@@ -305,12 +305,12 @@ SHOW DATABASES;
 
 ### Analysis
 
-The flag was embedded directly within the name of a custom database, a deliberate configuration choice made as part of the CTF design. In a real-world assessment, this technique mirrors scenarios where sensitive identifiers, environment names, or project codes are exposed through database metadata — information that becomes accessible to any user with even minimal database access privileges.
+The flag was embedded directly within the name of a custom database, a deliberate configuration choice made as part of the CTF design. In a real-world assessment, this technique mirrors scenarios where sensitive identifiers, environment names, or project codes are exposed through database metadata, information that becomes accessible to any user with even minimal database access privileges.
 
 ### Flag Captured
 
 ```
-FLAG4_[value embedded in the database name]
+FLAG4_##########################
 ```
 
 ---
@@ -326,15 +326,15 @@ FLAG4_[value embedded in the database name]
 
 ### Vulnerabilities Identified
 
-1. **Sensitive Data in HTTP Headers** — A custom `Server` header was used to transmit a flag value, analogous to real-world cases where tokens, internal build identifiers, or debug values are leaked through HTTP responses.
+1. **Sensitive Data in HTTP Headers**: A custom `Server` header was used to transmit a flag value, analogous to real-world cases where tokens, internal build identifiers, or debug values are leaked through HTTP responses.
 
-2. **robots.txt Disclosure** — The `robots.txt` file inadvertently advertised the path `/secret-info/`, which contained a flag file accessible without authentication.
+2. **robots.txt Disclosure**: The `robots.txt` file inadvertently advertised the path `/secret-info/`, which contained a flag file accessible without authentication.
 
-3. **Anonymous FTP Enabled** — The FTP service permitted unauthenticated access, exposing a plaintext credential file alongside the flag. In a production environment, this would represent a severe security vulnerability.
+3. **Anonymous FTP Enabled**: The FTP service permitted unauthenticated access, exposing a plaintext credential file alongside the flag. In a production environment, this would represent a severe security vulnerability.
 
-4. **Credential Reuse and Plaintext Storage** — Credentials stored in plaintext on the FTP server were directly reusable against the MySQL service, enabling privilege escalation across services.
+4. **Credential Reuse and Plaintext Storage**: Credentials stored in plaintext on the FTP server were directly reusable against the MySQL service, enabling privilege escalation across services.
 
-5. **Flag Exposed in Database Name** — Sensitive identifiers embedded in database names are accessible to all authenticated users, regardless of their intended access level.
+5. **Flag Exposed in Database Name**: Sensitive identifiers embedded in database names are accessible to all authenticated users, regardless of their intended access level.
 
 ---
 
@@ -354,7 +354,7 @@ This CTF lab effectively illustrated how an attacker can chain together a series
 
 - **Database enumeration is a standard step** in any penetration test where database credentials are obtained. Naming conventions for databases and tables should not include sensitive identifiers.
 
-The methodologies demonstrated in this lab — banner grabbing, metadata file inspection, service enumeration, anonymous access testing, and database enumeration — form a fundamental part of the footprinting and scanning phase in any professional penetration testing engagement.
+The methodologies demonstrated in this lab: banner grabbing, metadata file inspection, service enumeration, anonymous access testing, and database enumeration, form a fundamental part of the footprinting and scanning phase in any professional penetration testing engagement.
 
 ---
 
