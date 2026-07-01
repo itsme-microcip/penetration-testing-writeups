@@ -7,12 +7,12 @@
 
 1. [Introduction](#1-introduction)
 2. [Lab Environment Overview](#2-lab-environment-overview)
-3. [Target 1 — Initial Reconnaissance](#3-target-1--initial-reconnaissance)
-4. [Flag 1 — RSYNC Banner Inspection](#4-flag-1--rsync-banner-inspection)
-5. [Flag 2 — Anonymous RSYNC Share Enumeration and File Retrieval](#5-flag-2--anonymous-rsync-share-enumeration-and-file-retrieval)
-6. [Target 2 — Initial Reconnaissance](#6-target-2--initial-reconnaissance)
-7. [Flag 3 — Roxy-WI Unauthenticated RCE via Metasploit](#7-flag-3--roxy-wi-unauthenticated-rce-via-metasploit)
-8. [Flag 4 — Cron Job Enumeration and Flag Discovery](#8-flag-4--cron-job-enumeration-and-flag-discovery)
+3. [Target 1: Initial Reconnaissance](#3-target-1--initial-reconnaissance)
+4. [Flag 1: RSYNC Banner Inspection](#4-flag-1--rsync-banner-inspection)
+5. [Flag 2: Anonymous RSYNC Share Enumeration and File Retrieval](#5-flag-2--anonymous-rsync-share-enumeration-and-file-retrieval)
+6. [Target 2: Initial Reconnaissance](#6-target-2--initial-reconnaissance)
+7. [Flag 3: Roxy-WI Unauthenticated RCE via Metasploit](#7-flag-3--roxy-wi-unauthenticated-rce-via-metasploit)
+8. [Flag 4: Cron Job Enumeration and Flag Discovery](#8-flag-4--cron-job-enumeration-and-flag-discovery)
 9. [Summary of Findings](#9-summary-of-findings)
 10. [Conclusions and Lessons Learned](#10-conclusions-and-lessons-learned)
 
@@ -22,7 +22,7 @@
 
 This report documents the methodology, tools, and findings from a Capture The Flag (CTF) lab exercise titled **Host & Network Penetration Testing: The Metasploit Framework CTF 2**, completed as part of a structured penetration testing curriculum. The lab comprised two Linux target machines, each hosting two flags, requiring distinct exploitation techniques across different services and vulnerability classes.
 
-**Target 1** exposed an RSYNC service on a non-standard-yet-common port, which allowed anonymous module listing and unauthenticated file retrieval — yielding both flags through passive inspection and file download.
+**Target 1** exposed an RSYNC service on a non-standard-yet-common port, which allowed anonymous module listing and unauthenticated file retrieval, yielding both flags through passive inspection and file download.
 
 **Target 2** hosted a vulnerable installation of **Roxy-WI**, a web-based HAProxy and Nginx management interface, affected by an unauthenticated command injection vulnerability (CVE-2022-31137). Exploitation via Metasploit produced a Meterpreter shell, from which a fourth flag was discovered embedded within a cron job definition.
 
@@ -65,13 +65,13 @@ All activities were performed within an isolated, authorised lab environment. No
 | Flag   | Target   | Hint                                                                               |
 |--------|----------|------------------------------------------------------------------------------------|
 | Flag 1 | Target 1 | Enumerate the open port using Metasploit and inspect the RSYNC banner closely.     |
-| Flag 2 | Target 1 | The files on the RSYNC server hold valuable information — explore them.            |
+| Flag 2 | Target 1 | The files on the RSYNC server hold valuable information, explore them.            |
 | Flag 3 | Target 2 | Exploit the webapp using Metasploit to gain a shell.                               |
-| Flag 4 | Target 2 | Automated tasks can leave clues — investigate scheduled jobs or running processes. |
+| Flag 4 | Target 2 | Automated tasks can leave clues, investigate scheduled jobs or running processes. |
 
 ---
 
-## 3. Target 1 — Initial Reconnaissance
+## 3. Target 1: Initial Reconnaissance
 
 Port scanning for Target 1 was performed using the Metasploit TCP port scanner module rather than Nmap, as directed by the lab objective.
 
@@ -94,11 +94,11 @@ msf6 auxiliary(scanner/portscan/tcp) > run
 
 ### Analysis
 
-A single open port was identified: **port 873**, the default port for the **RSYNC** protocol. RSYNC is a fast file synchronisation and transfer utility widely used in Linux environments for backups and file distribution. When misconfigured, RSYNC can expose file shares to anonymous access without requiring authentication — making it a high-value target for data exfiltration in penetration testing engagements.
+A single open port was identified: **port 873**, the default port for the **RSYNC** protocol. RSYNC is a fast file synchronisation and transfer utility widely used in Linux environments for backups and file distribution. When misconfigured, RSYNC can expose file shares to anonymous access without requiring authentication, making it a high-value target for data exfiltration in penetration testing engagements.
 
 ---
 
-## 4. Flag 1 — RSYNC Banner Inspection
+## 4. Flag 1: RSYNC Banner Inspection
 
 ### Hint
 
@@ -106,7 +106,7 @@ A single open port was identified: **port 873**, the default port for the **RSYN
 
 ### Methodology
 
-RSYNC servers present a module listing when queried at the protocol level — analogous to an SMB share listing or an FTP directory enumeration. Connecting to the RSYNC service with the `rsync://` URI scheme and specifying only the hostname (without a module path) causes the server to return its list of available modules along with any configured descriptions. The hint indicated that the banner itself — specifically the module listing — contained the first flag.
+RSYNC servers present a module listing when queried at the protocol level, analogous to an SMB share listing or an FTP directory enumeration. Connecting to the RSYNC service with the `rsync://` URI scheme and specifying only the hostname (without a module path) causes the server to return its list of available modules along with any configured descriptions. The hint indicated that the banner itself, specifically the module listing, contained the first flag.
 
 ### Command Used
 
@@ -124,7 +124,7 @@ The module listing returned a single RSYNC module named `backupwscohen`, with it
 
 ### Analysis
 
-Embedding sensitive data — or in a real-world context, any descriptive text — in an RSYNC module's `comment` field is a misconfiguration analogous to the SSH or FTP banner disclosure issues seen in prior labs. The module listing is returned without authentication, meaning any network-accessible RSYNC service exposes its module names and descriptions to unauthenticated clients. In a production environment, module names should not reveal the nature of the data they contain, and descriptions should carry only generic labels. The module name `backupwscohen` itself suggests a personal backup share — a common source of sensitive data leakage in enterprise environments where RSYNC is used for ad-hoc file transfers.
+Embedding sensitive data  or in a real-world context, any descriptive text in an RSYNC module's `comment` field is a misconfiguration analogous to the SSH or FTP banner disclosure issues seen in prior labs. The module listing is returned without authentication, meaning any network-accessible RSYNC service exposes its module names and descriptions to unauthenticated clients. In a production environment, module names should not reveal the nature of the data they contain, and descriptions should carry only generic labels. The module name `backupwscohen` itself suggests a personal backup share, a common source of sensitive data leakage in enterprise environments where RSYNC is used for ad-hoc file transfers.
 
 ### Flag Captured
 
@@ -134,7 +134,7 @@ FLAG1_{######################################}
 
 ---
 
-## 5. Flag 2 — Anonymous RSYNC Share Enumeration and File Retrieval
+## 5. Flag 2: Anonymous RSYNC Share Enumeration and File Retrieval
 
 ### Hint
 
@@ -159,7 +159,7 @@ drwxr-xr-x    4,096 2026/06/26 18:41:14 .
 -rw-r--r--       39 2026/06/26 18:41:14 pii_data.xlsx
 ```
 
-Three files were present in the module: `TPSData.txt`, `office_staff.vhd`, and `pii_data.xlsx`. The filenames are notable in a real-world assessment context — `office_staff.vhd` suggests a virtual hard disk image potentially containing user data, and `pii_data.xlsx` explicitly references personally identifiable information.
+Three files were present in the module: `TPSData.txt`, `office_staff.vhd`, and `pii_data.xlsx`. The filenames are notable in a real-world assessment context: `office_staff.vhd` suggests a virtual hard disk image potentially containing user data, and `pii_data.xlsx` explicitly references personally identifiable information.
 
 ### Step 2: Download All Files
 
@@ -203,7 +203,7 @@ The flag was embedded as the full contents of `pii_data.xlsx`. The other two fil
 
 ### Analysis
 
-The `backupwscohen` RSYNC module required no credentials, allowing any client to list and download its contents without any form of authentication. This is a common misconfiguration in environments where RSYNC is deployed for convenience without hardening — the `hosts allow`, `auth users`, and `secrets file` directives in `rsyncd.conf` are frequently left unconfigured. In a real-world scenario, the three files present in this module represent a significant data exposure: a virtual hard disk image, a spreadsheet labelled as containing PII, and an internal data file — all downloadable by an unauthenticated remote attacker. RSYNC modules should always require authentication and, where possible, restrict access by IP range using the `hosts allow` directive.
+The `backupwscohen` RSYNC module required no credentials, allowing any client to list and download its contents without any form of authentication. This is a common misconfiguration in environments where RSYNC is deployed for convenience without hardening: the `hosts allow`, `auth users`, and `secrets file` directives in `rsyncd.conf` are frequently left unconfigured. In a real-world scenario, the three files present in this module represent a significant data exposure: a virtual hard disk image, a spreadsheet labelled as containing PII, and an internal data file, all downloadable by an unauthenticated remote attacker. RSYNC modules should always require authentication and, where possible, restrict access by IP range using the `hosts allow` directive.
 
 ### Flag Captured
 
@@ -213,7 +213,7 @@ FLAG2_{######################################}
 
 ---
 
-## 6. Target 2 — Initial Reconnaissance
+## 6. Target 2: Initial Reconnaissance
 
 A full TCP port scan with service version detection and default script execution was performed against Target 2.
 
@@ -239,13 +239,13 @@ Service Info: Host: roxy-wi.example.com
 
 ### Analysis
 
-Target 2 exposed a web server on both HTTP (port 80) and HTTPS (port 443), with both services identifying as **Roxy-WI** via the HTTP title and the SSL certificate's common name (`*.roxy-wi.org`). Roxy-WI is an open-source web interface for managing HAProxy, Nginx, Keepalived, and Grafana services. Navigating to `http://target2.ine.local` confirmed the application identity and triggered a redirect to `/app/overview.py`, which initiated a file download — indicating an application misconfiguration rather than a standard web login flow.
+Target 2 exposed a web server on both HTTP (port 80) and HTTPS (port 443), with both services identifying as **Roxy-WI** via the HTTP title and the SSL certificate's common name (`*.roxy-wi.org`). Roxy-WI is an open-source web interface for managing HAProxy, Nginx, Keepalived, and Grafana services. Navigating to `http://target2.ine.local` confirmed the application identity and triggered a redirect to `/app/overview.py`, which initiated a file download indicating an application misconfiguration rather than a standard web login flow.
 
-Further manual inspection of the `/app/` path revealed a fully browseable directory listing containing the application's Python source files, configuration files, and a SQLite database (`roxy-wi.db`). While the exposed source code was noted as a significant finding, the hint directed focus toward Metasploit — suggesting a known, documented exploit was the intended attack path.
+Further manual inspection of the `/app/` path revealed a fully browseable directory listing containing the application's Python source files, configuration files, and a SQLite database (`roxy-wi.db`). While the exposed source code was noted as a significant finding, the hint directed focus toward Metasploit suggesting a known, documented exploit was the intended attack path.
 
 ---
 
-## 7. Flag 3 — Roxy-WI Unauthenticated RCE via Metasploit
+## 7. Flag 3: Roxy-WI Unauthenticated RCE via Metasploit
 
 ### Hint
 
@@ -331,7 +331,7 @@ The flag was placed directly in the filesystem root, accessible to the `www-data
 
 ### Analysis
 
-CVE-2022-31137 is a critical severity (CVSS 9.8) unauthenticated remote code execution vulnerability. The absence of any authentication requirement means that any network-accessible instance of a vulnerable Roxy-WI version is immediately exploitable by any attacker who can reach port 80 or 443. The Metasploit module's automatic vulnerability check — using a benign test command before deploying the payload — is a useful feature that prevents unnecessary exploitation attempts against non-vulnerable targets. The exposed `/app/` directory listing also represents a secondary vulnerability: the application's Python source code and SQLite database were publicly readable, potentially revealing additional attack vectors independently of the CVE.
+CVE-2022-31137 is a critical severity (CVSS 9.8) unauthenticated remote code execution vulnerability. The absence of any authentication requirement means that any network-accessible instance of a vulnerable Roxy-WI version is immediately exploitable by any attacker who can reach port 80 or 443. The Metasploit module's automatic vulnerability check, using a benign test command before deploying the payload, is a useful feature that prevents unnecessary exploitation attempts against non-vulnerable targets. The exposed `/app/` directory listing also represents a secondary vulnerability: the application's Python source code and SQLite database were publicly readable, potentially revealing additional attack vectors independently of the CVE.
 
 ### Flag Captured
 
@@ -341,7 +341,7 @@ FLAG3_{######################################}
 
 ---
 
-## 8. Flag 4 — Cron Job Enumeration and Flag Discovery
+## 8. Flag 4: Cron Job Enumeration and Flag Discovery
 
 ### Hint
 
@@ -397,7 +397,7 @@ The third cron entry was immediately distinctive: a job scheduled to run **every
 
 ### Analysis
 
-The flag was encoded directly within a cron job's command field — a realistic representation of how sensitive values such as secrets, API keys, or credentials can be inadvertently committed to cron configurations in production environments. Cron job files in `/etc/cron.d/` are typically readable by all users on the system (world-readable by default), meaning any local user — or, as in this case, a compromised web service account — can read their contents without requiring elevated privileges. The fact that the `crontab` binary was absent and `/etc/crontab` did not exist made systematic enumeration of the `/etc/` directory structure the necessary fallback — reinforcing the importance of thorough post-exploitation filesystem enumeration rather than relying solely on standard enumeration commands.
+The flag was encoded directly within a cron job's command field, realistic representation of how sensitive values such as secrets, API keys, or credentials can be inadvertently committed to cron configurations in production environments. Cron job files in `/etc/cron.d/` are typically readable by all users on the system (world-readable by default), meaning any local user or, as in this case, a compromised web service account can read their contents without requiring elevated privileges. The fact that the `crontab` binary was absent and `/etc/crontab` did not exist made systematic enumeration of the `/etc/` directory structure the necessary fallback reinforcing the importance of thorough post-exploitation filesystem enumeration rather than relying solely on standard enumeration commands.
 
 ### Flag Captured
 
@@ -418,15 +418,15 @@ FLAG4_{######################################}
 
 ### Vulnerabilities Identified
 
-1. **Unauthenticated RSYNC Module Access (Target 1 — Critical)** — The `backupwscohen` RSYNC module required no credentials, allowing any network-accessible client to list and download its contents. The module contained files with names explicitly referencing PII and office staff data, representing a significant data exposure risk independent of the flag.
+1. **Unauthenticated RSYNC Module Access (Target 1 Critical)**: The `backupwscohen` RSYNC module required no credentials, allowing any network-accessible client to list and download its contents. The module contained files with names explicitly referencing PII and office staff data, representing a significant data exposure risk independent of the flag.
 
-2. **Sensitive Data in RSYNC Module Description (Target 1 — Medium)** — The RSYNC module's description field, visible to unauthenticated clients via the banner listing, contained the flag value. In production deployments, module descriptions should be generic and contain no operational or sensitive information.
+2. **Sensitive Data in RSYNC Module Description (Target 1: Medium)**: The RSYNC module's description field, visible to unauthenticated clients via the banner listing, contained the flag value. In production deployments, module descriptions should be generic and contain no operational or sensitive information.
 
-3. **Roxy-WI Unauthenticated RCE — CVE-2022-31137 (Target 2 — Critical)** — Roxy-WI version prior to 6.1.1.0 was deployed with no authentication bypass mitigations, allowing a remote attacker to achieve operating system command injection without credentials. CVSS score: 9.8 (Critical).
+3. **Roxy-WI Unauthenticated RCE: CVE-2022-31137 (Target 2: Critical)**: Roxy-WI version prior to 6.1.1.0 was deployed with no authentication bypass mitigations, allowing a remote attacker to achieve operating system command injection without credentials. CVSS score: 9.8 (Critical).
 
-4. **Exposed Web Application Source Code and Database (Target 2 — High)** — The `/app/` directory was publicly browseable, exposing the full Python source code of the Roxy-WI application, its configuration files, and a SQLite database (`roxy-wi.db`). The database likely contains user credentials and application configuration data.
+4. **Exposed Web Application Source Code and Database (Target 2: High)**: The `/app/` directory was publicly browseable, exposing the full Python source code of the Roxy-WI application, its configuration files, and a SQLite database (`roxy-wi.db`). The database likely contains user credentials and application configuration data.
 
-5. **Sensitive Data in Cron Job Definition (Target 2 — High)** — A world-readable cron job file in `/etc/cron.d/` contained the flag value as a literal `echo` command argument. In production environments, this pattern is analogous to credentials, API keys, or secrets being embedded directly in scheduled task definitions — a common and frequently overlooked data exposure vector.
+5. **Sensitive Data in Cron Job Definition (Target 2: High)**: A world-readable cron job file in `/etc/cron.d/` contained the flag value as a literal `echo` command argument. In production environments, this pattern is analogous to credentials, API keys, or secrets being embedded directly in scheduled task definitions a common and frequently overlooked data exposure vector.
 
 ---
 
@@ -463,15 +463,15 @@ meterpreter shell → /etc/cron.d/ enumeration
 
 - **RSYNC services must always require authentication.** The `auth users` and `secrets file` directives in `rsyncd.conf` should be configured for every module, and access should be further restricted by IP range using `hosts allow`. An unauthenticated RSYNC module accessible from a network is effectively a publicly readable file server.
 
-- **RSYNC module descriptions are publicly visible without authentication.** Any text placed in the `comment` field of an `rsyncd.conf` module entry is returned to all clients during the module listing phase — before any authentication occurs. These fields must never contain operational details, credentials, or sensitive identifiers.
+- **RSYNC module descriptions are publicly visible without authentication.** Any text placed in the `comment` field of an `rsyncd.conf` module entry is returned to all clients during the module listing phase before any authentication occurs. These fields must never contain operational details, credentials, or sensitive identifiers.
 
 - **Web applications must be kept patched and up to date.** CVE-2022-31137 was disclosed in July 2022 and patched in Roxy-WI 6.1.1.0 shortly thereafter. A vulnerable version of Roxy-WI exposed on a public-facing port with no mitigating controls represents a trivially exploitable critical severity vulnerability. Version management and patch tracking are non-negotiable security controls for any internet-accessible application.
 
 - **Web application source directories must not be browseable.** The Apache `Options -Indexes` directive must be set globally, and the `/app/` directory should not be served from within the web root at all. Application source code, configuration files, and databases must reside outside the document root or be protected by explicit `Deny` rules.
 
-- **Cron job files are world-readable and must never contain secrets.** Credentials, API keys, tokens, and any sensitive values should be stored in dedicated secrets management systems (HashiCorp Vault, AWS Secrets Manager, environment files with restricted permissions) and referenced by cron jobs indirectly — never embedded as literal values in cron command strings.
+- **Cron job files are world-readable and must never contain secrets.** Credentials, API keys, tokens, and any sensitive values should be stored in dedicated secrets management systems (HashiCorp Vault, AWS Secrets Manager, environment files with restricted permissions) and referenced by cron jobs indirectly never embedded as literal values in cron command strings.
 
-- **Post-exploitation enumeration must account for non-standard configurations.** The absence of the `crontab` binary and the `/etc/crontab` file would have ended a less thorough investigation prematurely. Manual enumeration of the `/etc/cron.d/` drop-in directory was required to discover the flag — reinforcing that automated enumeration scripts and standard commands are starting points, not complete solutions.
+- **Post-exploitation enumeration must account for non-standard configurations.** The absence of the `crontab` binary and the `/etc/crontab` file would have ended a less thorough investigation prematurely. Manual enumeration of the `/etc/cron.d/` drop-in directory was required to discover the flag reinforcing that automated enumeration scripts and standard commands are starting points, not complete solutions.
 
 ---
 
