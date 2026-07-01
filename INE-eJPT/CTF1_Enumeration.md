@@ -7,12 +7,12 @@
 
 1. [Introduction](#1-introduction)
 2. [Lab Environment Overview](#2-lab-environment-overview)
-3. [Initial Reconnaissance — Service Enumeration](#3-initial-reconnaissance--service-enumeration)
-4. [Flag 1 — Anonymous SMB Share Access](#4-flag-1--anonymous-smb-share-access)
-5. [Flag 2 — SMB User Enumeration and Password Brute-Force](#5-flag-2--smb-user-enumeration-and-password-brute-force)
-6. [Flag 3 — Hidden FTP Service Discovery and Credential Attack](#6-flag-3--hidden-ftp-service-discovery-and-credential-attack)
-7. [Flag 4 — SSH Banner Inspection](#7-flag-4--ssh-banner-inspection)
-8. [Appendix A — Custom Scripts](#8-appendix-a--custom-scripts)
+3. [Initial Reconnaissance: Service Enumeration](#3-initial-reconnaissance--service-enumeration)
+4. [Flag 1: Anonymous SMB Share Access](#4-flag-1--anonymous-smb-share-access)
+5. [Flag 2: SMB User Enumeration and Password Brute-Force](#5-flag-2--smb-user-enumeration-and-password-brute-force)
+6. [Flag 3: Hidden FTP Service Discovery and Credential Attack](#6-flag-3--hidden-ftp-service-discovery-and-credential-attack)
+7. [Flag 4: SSH Banner Inspection](#7-flag-4--ssh-banner-inspection)
+8. [Appendix A: Custom Scripts](#8-appendix-a--custom-scripts)
 9. [Summary of Findings](#9-summary-of-findings)
 10. [Conclusions and Lessons Learned](#10-conclusions-and-lessons-learned)
 
@@ -64,14 +64,14 @@ All activities were performed within an isolated, authorised lab environment. No
 
 Capture four flags embedded within the target's services by applying enumeration and credential attack techniques. The hints provided for each flag were:
 
-- **Flag 1:** A Samba share permits anonymous access — enumerate it.
+- **Flag 1:** A Samba share permits anonymous access, enumerate it.
 - **Flag 2:** A Samba user holds a weak password; their private share is at risk.
 - **Flag 3:** Follow the hint embedded in Flag 2 to locate this flag.
 - **Flag 4:** A warning banner intended to deter unauthorised login attempts contains the flag.
 
 ---
 
-## 3. Initial Reconnaissance — Service Enumeration
+## 3. Initial Reconnaissance: Service Enumeration
 
 The first step of the assessment was to conduct a fast service version scan using Nmap to identify open ports and the software versions running on the target machine.
 
@@ -99,11 +99,11 @@ The fast scan revealed three services:
 - **SSH (port 22):** A standard remote access service running OpenSSH. Noted for later investigation as a potential flag location or pivot point.
 - **Samba (ports 139 and 445):** The presence of Samba on both the legacy NetBIOS-session (139) and modern SMB (445) ports confirmed an active Windows-compatible file-sharing service on the Linux host. This became the primary initial target for enumeration.
 
-> **Note:** The fast scan did not reveal all running services, as it only examines a limited subset of all possible ports. A full TCP port scan performed later in the assessment uncovered a hidden FTP service on a non-standard port — described in detail in the Flag 3 section.
+> **Note:** The fast scan did not reveal all running services, as it only examines a limited subset of all possible ports. A full TCP port scan performed later in the assessment uncovered a hidden FTP service on a non-standard port described in detail in the Flag 3 section.
 
 ---
 
-## 4. Flag 1 — Anonymous SMB Share Access
+## 4. Flag 1: Anonymous SMB Share Access
 
 ### Hint
 
@@ -130,7 +130,7 @@ print$          Disk      Printer Drivers
 IPC$            IPC       IPC Service (target server (Samba, Ubuntu))
 ```
 
-Only the two default administrative shares were listed. Attempting anonymous access to `print$` returned `NT_STATUS_ACCESS_DENIED`. Connecting to `IPC$` succeeded but yielded no accessible file content — consistent with its role as an inter-process communication endpoint rather than a file repository.
+Only the two default administrative shares were listed. Attempting anonymous access to `print$` returned `NT_STATUS_ACCESS_DENIED`. Connecting to `IPC$` succeeded but yielded no accessible file content, consistent with its role as an inter-process communication endpoint rather than a file repository.
 
 ### Step 2: Enumerate Non-Advertised Shares via Wordlist
 
@@ -151,7 +151,7 @@ Since the default listing revealed no data-bearing shares, a share-name wordlist
 [*] Scan completed. Shares tested: 42, Accessible: 1.
 ```
 
-One share — `pubfiles` — was found to be anonymously accessible.
+One share `pubfiles`  was found to be anonymously accessible.
 
 ### Step 3: Connect to the Share and Retrieve the Flag
 
@@ -186,7 +186,7 @@ FLAG1{######################################}
 
 ---
 
-## 5. Flag 2 — SMB User Enumeration and Password Brute-Force
+## 5. Flag 2: SMB User Enumeration and Password Brute-Force
 
 ### Hint
 
@@ -194,7 +194,7 @@ FLAG1{######################################}
 
 ### Methodology
 
-With the SMB service confirmed as a viable attack surface, the next step was to enumerate valid user accounts on the target. Once usernames were identified, a credential brute-force attack could be mounted against each user's private share — a configuration pattern in which each user's share bears the same name as their username.
+With the SMB service confirmed as a viable attack surface, the next step was to enumerate valid user accounts on the target. Once usernames were identified, a credential brute-force attack could be mounted against each user's private share, a configuration pattern in which each user's share bears the same name as their username.
 
 ### Step 1: Enumerate SMB Users with enum4linux
 
@@ -222,7 +222,7 @@ Hydra was initially attempted for SMB brute-forcing but returned the following e
 [ERROR] target smb://target.ine.local:445/ does not support SMBv1
 ```
 
-Hydra's SMB module relies on the legacy SMBv1 protocol, which the target server had disabled — a common and recommended hardening measure. To work around this limitation, a custom Bash script was written that uses `smbclient` directly, which correctly negotiates modern SMB protocol versions. The script attempts to authenticate each user against their correspondingly named share using every password in the wordlist and reports the first successful credential pair. Full source is provided in [Appendix A](#8-appendix-a--custom-scripts).
+Hydra's SMB module relies on the legacy SMBv1 protocol, which the target server had disabled, a common and recommended hardening measure. To work around this limitation, a custom Bash script was written that uses `smbclient` directly, which correctly negotiates modern SMB protocol versions. The script attempts to authenticate each user against their correspondingly named share using every password in the wordlist and reports the first successful credential pair. Full source is provided in [Appendix A](#8-appendix-a--custom-scripts).
 
 ```bash
 ./brute_smb.sh
@@ -261,7 +261,7 @@ Psst! I heard there is an FTP service running. Find it and check the banner.
 
 ### Analysis
 
-The flag file contained both the flag value and an embedded hint pointing to a concealed FTP service, demonstrating a deliberate challenge-chaining design. The credential `josh:purple` was identified within the first pass of a standard Unix password list, illustrating the effectiveness of brute-force attacks against accounts with weak passwords. The pattern of naming private SMB shares after usernames — while administratively convenient — means that once a valid username is known, the corresponding share is immediately targetable.
+The flag file contained both the flag value and an embedded hint pointing to a concealed FTP service, demonstrating a deliberate challenge-chaining design. The credential `josh:purple` was identified within the first pass of a standard Unix password list, illustrating the effectiveness of brute-force attacks against accounts with weak passwords. The pattern of naming private SMB shares after usernames, while administratively convenient, means that once a valid username is known, the corresponding share is immediately targetable.
 
 ### Flag Captured
 
@@ -271,7 +271,7 @@ FLAG2{######################################}
 
 ---
 
-## 6. Flag 3 — Hidden FTP Service Discovery and Credential Attack
+## 6. Flag 3: Hidden FTP Service Discovery and Credential Attack
 
 ### Hint (from Flag 2)
 
@@ -317,7 +317,7 @@ Connected to target.ine.local.
 alice and amanda to change their weak passwords immediately!!!
 ```
 
-The banner explicitly named three specific users — `ashley`, `alice`, and `amanda` — and acknowledged that their passwords were known to be weak. This constitutes a critical information disclosure vulnerability: a publicly visible service banner that confirms valid usernames and advertises their susceptibility to brute-force attacks.
+The banner explicitly named three specific users: `ashley`, `alice`, and `amanda` and acknowledged that their passwords were known to be weak. This constitutes a critical information disclosure vulnerability: a publicly visible service banner that confirms valid usernames and advertises their susceptibility to brute-force attacks.
 
 ### Step 3: Targeted FTP Brute-Force with Hydra
 
@@ -368,7 +368,7 @@ FLAG3{#############################}
 
 ---
 
-## 7. Flag 4 — SSH Banner Inspection
+## 7. Flag 4: SSH Banner Inspection
 
 ### Hint
 
@@ -376,7 +376,7 @@ FLAG3{#############################}
 
 ### Methodology
 
-SSH servers support a configurable pre-authentication banner — a message displayed to any connecting client before credentials are exchanged. These banners are frequently used for legal notice purposes, such as warning users that the system is monitored and that unauthorised access is prohibited. The lab hint explicitly referenced a deterrent warning displayed at login. Reviewing the services identified by Nmap, SSH on port 22 was the only service consistent with this description.
+SSH servers support a configurable pre-authentication banner, a message displayed to any connecting client before credentials are exchanged. These banners are frequently used for legal notice purposes, such as warning users that the system is monitored and that unauthorised access is prohibited. The lab hint explicitly referenced a deterrent warning displayed at login. Reviewing the services identified by Nmap, SSH on port 22 was the only service consistent with this description.
 
 ### Step 1: Connect to SSH and Read the Pre-Authentication Banner
 
@@ -414,7 +414,7 @@ The flag was embedded at the end of the SSH pre-authentication banner, appended 
 
 ### Analysis
 
-SSH pre-authentication banners are configured via the `Banner` directive in the server's `sshd_config` file, which points to an external text file displayed to all connecting clients before any credentials are requested. Because the banner is transmitted prior to authentication, it is readable by any unauthenticated user who can reach the SSH port — including unauthorised parties. In a production environment, embedding any sensitive data (tokens, flags, internal system identifiers) within a pre-authentication banner constitutes a significant information disclosure vulnerability.
+SSH pre-authentication banners are configured via the `Banner` directive in the server's `sshd_config` file, which points to an external text file displayed to all connecting clients before any credentials are requested. Because the banner is transmitted prior to authentication, it is readable by any unauthenticated user who can reach the SSH port , including unauthorised parties. In a production environment, embedding any sensitive data (tokens, flags, internal system identifiers) within a pre-authentication banner constitutes a significant information disclosure vulnerability.
 
 ### Flag Captured
 
@@ -424,9 +424,9 @@ FLAG4{###############################}
 
 ---
 
-## 8. Appendix A — Custom Scripts
+## 8. Appendix A: Custom Scripts
 
-### A.1 — smb_anon_check.sh
+### A.1: smb_anon_check.sh
 
 This script was developed to enumerate non-advertised SMB shares by testing anonymous access against a list of candidate share names. For each name in the provided wordlist, it attempts a null-session connection using `smbclient` and reports whether the share is accessible.
 
@@ -486,7 +486,7 @@ echo "-------------------------------------------"
 echo -e "${YELLOW}[*] Scan completed.${NC} Shares tested: ${COUNT}, Accessible: ${SUCCESS}."
 ```
 
-### A.2 — brute_smb.sh
+### A.2: brute_smb.sh
 
 This script performs a targeted credential brute-force attack against the SMB service by iterating over a list of discovered usernames and testing each entry in a provided password wordlist. It authenticates against the user's correspondingly named private share, bypassing the SMBv1 limitation that prevented Hydra from being used directly.
 
@@ -520,21 +520,21 @@ done
 
 ### Vulnerabilities Identified
 
-1. **Anonymous SMB Share Access (pubfiles)** — A share was accessible without any credentials and was intentionally excluded from the default browse listing. Security by obscurity provides no real protection when share names can be enumerated via wordlists.
+1. **Anonymous SMB Share Access (pubfiles)**: A share was accessible without any credentials and was intentionally excluded from the default browse listing. Security by obscurity provides no real protection when share names can be enumerated via wordlists.
 
-2. **Weak SMB User Password (josh:purple)** — A user with a private SMB share was using a trivially guessable password that appeared early in a standard Unix password list, leaving their share fully exposed.
+2. **Weak SMB User Password (josh:purple)**: A user with a private SMB share was using a trivially guessable password that appeared early in a standard Unix password list, leaving their share fully exposed.
 
-3. **FTP Service on Non-Standard Port (5554)** — Deploying the FTP service on port 5554 rather than port 21 provided no security benefit, as a full port scan trivially revealed it. Obscuring service ports does not substitute for proper access controls.
+3. **FTP Service on Non-Standard Port (5554)**: Deploying the FTP service on port 5554 rather than port 21 provided no security benefit, as a full port scan trivially revealed it. Obscuring service ports does not substitute for proper access controls.
 
-4. **Username and Password Weakness Disclosure in FTP Banner** — The FTP service banner named three specific valid system users and explicitly acknowledged that their passwords were weak, effectively providing an attacker with a pre-built target list for a brute-force attack.
+4. **Username and Password Weakness Disclosure in FTP Banner**: The FTP service banner named three specific valid system users and explicitly acknowledged that their passwords were weak, effectively providing an attacker with a pre-built target list for a brute-force attack.
 
-5. **Sensitive Data in SSH Pre-Authentication Banner** — The SSH banner — visible to all connecting clients before authentication — contained the flag value. In a production context, embedding credentials, tokens, or any sensitive identifiers within a public-facing service banner represents a direct information disclosure vulnerability.
+5. **Sensitive Data in SSH Pre-Authentication Banner**: The SSH banner, visible to all connecting clients before authentication, contained the flag value. In a production context, embedding credentials, tokens, or any sensitive identifiers within a public-facing service banner represents a direct information disclosure vulnerability.
 
 ---
 
 ## 10. Conclusions and Lessons Learned
 
-This lab demonstrated how a disciplined, methodological approach to service enumeration — combined with the willingness to chain findings from one stage into the next — is sufficient to achieve a comprehensive compromise of a misconfigured target. No single step required advanced exploitation techniques; the entire assessment relied on well-established enumeration tools and logical reasoning.
+This lab demonstrated how a disciplined, methodological approach to service enumeration, combined with the willingness to chain findings from one stage into the next, is sufficient to achieve a comprehensive compromise of a misconfigured target. No single step required advanced exploitation techniques; the entire assessment relied on well-established enumeration tools and logical reasoning.
 
 ### Attack Chain Summary
 
@@ -563,11 +563,11 @@ SSH Pre-Authentication Banner (port 22)
 
 - **Fast port scans are insufficient for thorough assessments.** The FTP service on port 5554 would have been entirely missed without a full `-p-` scan. Full TCP port scans are an essential step in any professional enumeration phase.
 
-- **SMB null sessions and non-advertised shares are not a security control.** Restricting browseable listings does not prevent access to a share that permits anonymous connections. Proper access controls — not obscurity — are the correct defence.
+- **SMB null sessions and non-advertised shares are not a security control.** Restricting browseable listings does not prevent access to a share that permits anonymous connections. Proper access controls, not obscurity, are the correct defence.
 
 - **Password policies must be enforced technically, not just administratively.** A weak password such as `purple` collapsed under the very first pass of a common wordlist. Minimum complexity requirements and account lockout policies significantly reduce brute-force viability.
 
-- **Service banners must never disclose operational or user-specific information.** The FTP banner that named users and acknowledged their weak passwords was arguably the single most damaging misconfiguration in the lab — it reduced a broad brute-force problem into a targeted, three-candidate attack. Banners should contain only generic legal notices.
+- **Service banners must never disclose operational or user-specific information.** The FTP banner that named users and acknowledged their weak passwords was arguably the single most damaging misconfiguration in the lab, it reduced a broad brute-force problem into a targeted, three-candidate attack. Banners should contain only generic legal notices.
 
 - **Pre-authentication attack surfaces are fully exposed.** SSH banners, FTP banners, and SMTP greeting messages are all readable by unauthenticated parties. Any sensitive data embedded in these locations is effectively public.
 
