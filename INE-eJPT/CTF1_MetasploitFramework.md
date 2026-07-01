@@ -7,11 +7,11 @@
 
 1. [Introduction](#1-introduction)
 2. [Lab Environment Overview](#2-lab-environment-overview)
-3. [Initial Reconnaissance — Service Enumeration](#3-initial-reconnaissance--service-enumeration)
-4. [Flag 1 — MSSQL Credential Brute-Force and xp_cmdshell Execution](#4-flag-1--mssql-credential-brute-force-and-xp_cmdshell-execution)
-5. [Flag 2 — CLR Payload Escalation to Meterpreter and SYSTEM Privilege Escalation](#5-flag-2--clr-payload-escalation-to-meterpreter-and-system-privilege-escalation)
-6. [Flag 3 — Recursive Filesystem Search via xp_cmdshell](#6-flag-3--recursive-filesystem-search-via-xp_cmdshell)
-7. [Flag 4 — Administrator Desktop Enumeration](#7-flag-4--administrator-desktop-enumeration)
+3. [Initial Reconnaissance: Service Enumeration](#3-initial-reconnaissance--service-enumeration)
+4. [Flag 1: MSSQL Credential Brute-Force and xp_cmdshell Execution](#4-flag-1--mssql-credential-brute-force-and-xp_cmdshell-execution)
+5. [Flag 2: CLR Payload Escalation to Meterpreter and SYSTEM Privilege Escalation](#5-flag-2--clr-payload-escalation-to-meterpreter-and-system-privilege-escalation)
+6. [Flag 3: Recursive Filesystem Search via xp_cmdshell](#6-flag-3--recursive-filesystem-search-via-xp_cmdshell)
+7. [Flag 4: Administrator Desktop Enumeration](#7-flag-4--administrator-desktop-enumeration)
 8. [Summary of Findings](#8-summary-of-findings)
 9. [Conclusions and Lessons Learned](#9-conclusions-and-lessons-learned)
 
@@ -28,7 +28,7 @@ The attack progression in this lab is representative of a classic Windows databa
 3. **Privilege escalation** from the SQL Server service account to `NT AUTHORITY\SYSTEM` using the Metasploit `getsystem` technique, enabled by the `SeImpersonatePrivilege` token privilege.
 4. **Full filesystem enumeration** across protected system directories and the Administrator user profile.
 
-The primary tool throughout was the **Metasploit Framework**, used for credential brute-forcing, session management, CLR payload delivery, and privilege escalation — supplemented by manual SQL query execution and Windows shell commands for filesystem navigation.
+The primary tool throughout was the **Metasploit Framework**, used for credential brute-forcing, session management, CLR payload delivery, and privilege escalation supplemented by manual SQL query execution and Windows shell commands for filesystem navigation.
 
 All activities were performed within an isolated, authorised lab environment. No live or production systems were involved.
 
@@ -67,7 +67,7 @@ All activities were performed within an isolated, authorised lab environment. No
 
 ---
 
-## 3. Initial Reconnaissance — Service Enumeration
+## 3. Initial Reconnaissance: Service Enumeration
 
 A full TCP port scan with service version detection was performed against the target to map the complete attack surface.
 
@@ -111,7 +111,7 @@ msf6 > setg RHOSTS target.ine.local
 
 ---
 
-## 4. Flag 1 — MSSQL Credential Brute-Force and xp_cmdshell Execution
+## 4. Flag 1: MSSQL Credential Brute-Force and xp_cmdshell Execution
 
 ### Hint
 
@@ -150,7 +150,7 @@ msf6 auxiliary(scanner/mssql/mssql_login) > run
 [*] 1 MSSQL session was opened successfully.
 ```
 
-The `sa` account was found to use a **blank password** — no password at all — confirming authentication with an empty credential. A live MSSQL session was automatically opened by the module.
+The `sa` account was found to use a **blank password** confirming authentication with an empty credential. A live MSSQL session was automatically opened by the module.
 
 ### Step 2: Execute Commands via xp_cmdshell
 
@@ -166,7 +166,7 @@ EXEC xp_cmdshell "whoami";
 nt service\mssqlserver
 ```
 
-The commands were running as `NT Service\MSSQLSERVER` — the SQL Server service account. The C: drive root was then enumerated:
+The commands were running as `NT Service\MSSQLSERVER` the SQL Server service account. The C: drive root was then enumerated:
 
 ```sql
 EXEC xp_cmdshell "dir C:\";
@@ -192,7 +192,7 @@ FLAG1_{######################################}
 
 ### Analysis
 
-The `sa` account with a blank password is one of the most frequently encountered misconfigurations on MSSQL servers and represents a critical vulnerability. SQL Server's default installation prompts for a strong `sa` password, but many legacy deployments or poorly executed migrations leave it blank or set it to a trivially guessable value. Combined with `xp_cmdshell` being enabled — which SQL Server disables by default for security reasons but which is often re-enabled by administrators for convenience — this configuration provided immediate operating system-level command execution without any additional exploitation step.
+The `sa` account with a blank password is one of the most frequently encountered misconfigurations on MSSQL servers and represents a critical vulnerability. SQL Server's default installation prompts for a strong `sa` password, but many legacy deployments or poorly executed migrations leave it blank or set it to a trivially guessable value. Combined with `xp_cmdshell` being enabled, which SQL Server disables by default for security reasons but which is often re-enabled by administrators for convenience, this configuration provided immediate operating system-level command execution without any additional exploitation step.
 
 ### Flag Captured
 
@@ -202,7 +202,7 @@ FLAG1_{######################################}
 
 ---
 
-## 5. Flag 2 — CLR Payload Escalation to Meterpreter and SYSTEM Privilege Escalation
+## 5. Flag 2: CLR Payload Escalation to Meterpreter and SYSTEM Privilege Escalation
 
 ### Hint
 
@@ -214,7 +214,7 @@ The `C:\Windows\System32\config` directory is protected by default Windows acces
 
 ### Step 1: Deliver a CLR-Based Meterpreter Payload
 
-The `windows/mssql/mssql_clr_payload` module delivers a Meterpreter payload by exploiting SQL Server's **Common Language Runtime (CLR)** integration — a feature that allows .NET assemblies to be loaded and executed directly within SQL Server. The module temporarily enables `TRUSTWORTHY` and CLR settings on the database, loads a custom .NET assembly as a stored procedure, executes it to spawn the reverse shell, and then cleans up all artefacts.
+The `windows/mssql/mssql_clr_payload` module delivers a Meterpreter payload by exploiting SQL Server's **Common Language Runtime (CLR)** integration, a feature that allows .NET assemblies to be loaded and executed directly within SQL Server. The module temporarily enables `TRUSTWORTHY` and CLR settings on the database, loads a custom .NET assembly as a stored procedure, executes it to spawn the reverse shell, and then cleans up all artefacts.
 
 ```
 msf6 > use exploit/windows/mssql/mssql_clr_payload
@@ -266,7 +266,7 @@ SeIncreaseQuotaPrivilege
 SeIncreaseWorkingSetPrivilege
 ```
 
-The presence of **`SeImpersonatePrivilege`** is the critical finding. This privilege — commonly held by SQL Server service accounts, IIS application pool accounts, and other Windows service identities — allows a process to impersonate any security token it can obtain a handle to, including the SYSTEM token. It is the prerequisite for a class of local privilege escalation techniques collectively known as **token impersonation attacks** (including Potato exploits and Named Pipe Impersonation), all of which reliably escalate a service account to `NT AUTHORITY\SYSTEM`.
+The presence of **`SeImpersonatePrivilege`** is the critical finding. This privilege, commonly held by SQL Server service accounts, IIS application pool accounts, and other Windows service identities, allows a process to impersonate any security token it can obtain a handle to, including the SYSTEM token. It is the prerequisite for a class of local privilege escalation techniques collectively known as **token impersonation attacks** (including Potato exploits and Named Pipe Impersonation), all of which reliably escalate a service account to `NT AUTHORITY\SYSTEM`.
 
 ### Step 3: Escalate to SYSTEM
 
@@ -313,7 +313,7 @@ FLAG2_{######################################}
 
 ### Analysis
 
-The escalation from `NT Service\MSSQLSERVER` to `NT AUTHORITY\SYSTEM` was achieved entirely through legitimate Windows privilege mechanics — no software vulnerability was exploited. `SeImpersonatePrivilege` is by design available to service accounts that need to act on behalf of authenticated users, but it is routinely abused as a privilege escalation vector. Microsoft has acknowledged this behaviour but considers it by-design for service accounts. The appropriate mitigation is to run SQL Server under a purpose-created, minimally privileged service account rather than a built-in service identity, and to enable Windows Defender Credential Guard and token binding where feasible.
+The escalation from `NT Service\MSSQLSERVER` to `NT AUTHORITY\SYSTEM` was achieved entirely through legitimate Windows privilege mechanics, no software vulnerability was exploited. `SeImpersonatePrivilege` is by design available to service accounts that need to act on behalf of authenticated users, but it is routinely abused as a privilege escalation vector. Microsoft has acknowledged this behaviour but considers it by-design for service accounts. The appropriate mitigation is to run SQL Server under a purpose-created, minimally privileged service account rather than a built-in service identity, and to enable Windows Defender Credential Guard and token binding where feasible.
 
 ### Flag Captured
 
@@ -323,7 +323,7 @@ FLAG2_{######################################}
 
 ---
 
-## 6. Flag 3 — Recursive Filesystem Search via xp_cmdshell
+## 6. Flag 3: Recursive Filesystem Search via xp_cmdshell
 
 ### Hint
 
@@ -351,7 +351,7 @@ C:\Windows\System32\drivers\gmreadme.txt
 C:\Windows\System32\drivers\etc\EscaltePrivilageToGetThisFlag.txt
 ```
 
-The file `EscaltePrivilageToGetThisFlag.txt` in `C:\Windows\System32\drivers\etc\` stood out immediately — its filename was a deliberate hint confirming that privilege escalation was the prerequisite for Flag 4 (already completed in the Flag 2 phase).
+The file `EscaltePrivilageToGetThisFlag.txt` in `C:\Windows\System32\drivers\etc\` stood out immediately: its filename was a deliberate hint confirming that privilege escalation was the prerequisite for Flag 4 (already completed in the Flag 2 phase).
 
 ### Step 2: Retrieve Flag 3
 
@@ -367,7 +367,7 @@ FLAG3_{######################################}
 
 ### Analysis
 
-The use of `xp_cmdshell` for recursive filesystem searches demonstrates the broad operating system access that an authenticated MSSQL session provides. The `dir /S /B` command is a simple but effective enumeration technique for locating files of interest across a Windows filesystem without requiring a full Meterpreter session. The filename `EscaltePrivilageToGetThisFlag.txt` served as an embedded hint, reinforcing the lab's narrative that privilege escalation was the necessary path to the final flag — a technique that had already been completed during the Flag 2 phase, meaning Flag 4 was immediately accessible.
+The use of `xp_cmdshell` for recursive filesystem searches demonstrates the broad operating system access that an authenticated MSSQL session provides. The `dir /S /B` command is a simple but effective enumeration technique for locating files of interest across a Windows filesystem without requiring a full Meterpreter session. The filename `EscaltePrivilageToGetThisFlag.txt` served as an embedded hint, reinforcing the lab's narrative that privilege escalation was the necessary path to the final flag, a technique that had already been completed during the Flag 2 phase, meaning Flag 4 was immediately accessible.
 
 ### Flag Captured
 
@@ -377,7 +377,7 @@ FLAG3_{######################################}
 
 ---
 
-## 7. Flag 4 — Administrator Desktop Enumeration
+## 7. Flag 4: Administrator Desktop Enumeration
 
 ### Hint
 
@@ -431,7 +431,7 @@ FLAG4_{######################################}
 
 ### Analysis
 
-The flag was accessible immediately as a consequence of the SYSTEM-level privilege escalation performed during the Flag 2 phase. `NT AUTHORITY\SYSTEM` supersedes all user-level access controls on a Windows system, including those protecting user profile directories. In a real-world engagement, the Administrator's Desktop, Documents, and Downloads folders are high-value targets that routinely contain credentials, SSH keys, RDP configuration files, sensitive documents, and notes — making them a standard point of interest in any post-exploitation enumeration workflow.
+The flag was accessible immediately as a consequence of the SYSTEM-level privilege escalation performed during the Flag 2 phase. `NT AUTHORITY\SYSTEM` supersedes all user-level access controls on a Windows system, including those protecting user profile directories. In a real-world engagement, the Administrator's Desktop, Documents, and Downloads folders are high-value targets that routinely contain credentials, SSH keys, RDP configuration files, sensitive documents, and notes, making them a standard point of interest in any post-exploitation enumeration workflow.
 
 ### Flag Captured
 
@@ -452,28 +452,28 @@ FLAG4_{######################################}
 
 ### Vulnerabilities Identified
 
-1. **Blank `sa` Password on MSSQL (Critical)** — The SQL Server `sa` account was configured with no password, allowing unauthenticated access via any MSSQL client or Metasploit brute-force module. This represents a complete failure of database authentication and grants an attacker full `sysadmin` privileges over the database engine.
+1. **Blank `sa` Password on MSSQL (Critical)**: The SQL Server `sa` account was configured with no password, allowing unauthenticated access via any MSSQL client or Metasploit brute-force module. This represents a complete failure of database authentication and grants an attacker full `sysadmin` privileges over the database engine.
 
-2. **`xp_cmdshell` Enabled (Critical)** — The `xp_cmdshell` extended stored procedure was enabled on the SQL Server instance. This feature is disabled by default precisely because it transforms a database-level compromise into an operating system-level one. With `xp_cmdshell` active, any user with `sysadmin` privileges can execute arbitrary commands on the host OS under the SQL Server service account identity.
+2. **`xp_cmdshell` Enabled (Critical)**: The `xp_cmdshell` extended stored procedure was enabled on the SQL Server instance. This feature is disabled by default precisely because it transforms a database-level compromise into an operating system-level one. With `xp_cmdshell` active, any user with `sysadmin` privileges can execute arbitrary commands on the host OS under the SQL Server service account identity.
 
-3. **`SeImpersonatePrivilege` Leading to SYSTEM Escalation (Critical)** — The MSSQLSERVER service account held `SeImpersonatePrivilege`, a privilege that enabled escalation to `NT AUTHORITY\SYSTEM` via Named Pipe Impersonation (Meterpreter `getsystem` technique 5). While this privilege is inherent to many Windows service accounts, its combination with the initial MSSQL compromise produced a complete host takeover.
+3. **`SeImpersonatePrivilege` Leading to SYSTEM Escalation (Critical)**: The MSSQLSERVER service account held `SeImpersonatePrivilege`, a privilege that enabled escalation to `NT AUTHORITY\SYSTEM` via Named Pipe Impersonation (Meterpreter `getsystem` technique 5). While this privilege is inherent to many Windows service accounts, its combination with the initial MSSQL compromise produced a complete host takeover.
 
-4. **MSSQL Running Under a Privileged Service Account (High)** — Running SQL Server under `NT Service\MSSQLSERVER` — a highly privileged identity — amplified the impact of the initial compromise. A dedicated, minimally privileged service account with no `SeImpersonatePrivilege` would have significantly constrained the attacker's ability to escalate.
+4. **MSSQL Running Under a Privileged Service Account (High)**: Running SQL Server under `NT Service\MSSQLSERVER`, a highly privileged identity, amplified the impact of the initial compromise. A dedicated, minimally privileged service account with no `SeImpersonatePrivilege` would have significantly constrained the attacker's ability to escalate.
 
-5. **Sensitive Files Stored in Accessible Locations (Medium)** — Flag files were placed in the C: drive root, the `config` directory, the `drivers\etc` directory, and the Administrator Desktop — locations that are accessible at varying privilege levels and reflect realistic patterns of poor file storage hygiene on Windows servers.
+5. **Sensitive Files Stored in Accessible Locations (Medium)**: Flag files were placed in the C: drive root, the `config` directory, the `drivers\etc` directory, and the Administrator Desktop, locations that are accessible at varying privilege levels and reflect realistic patterns of poor file storage hygiene on Windows servers.
 
 ---
 
 ## 9. Conclusions and Lessons Learned
 
-This lab demonstrated a complete, end-to-end Windows server compromise starting from a single unauthenticated network service — MSSQL with a blank `sa` password — and progressing through command execution, session upgrade, and privilege escalation to full SYSTEM access. The entire chain was executed using the Metasploit Framework, showcasing how its integrated modules handle each phase of an attack cohesively.
+This lab demonstrated a complete, end-to-end Windows server compromise starting from a single unauthenticated network service, MSSQL with a blank `sa` password, and progressing through command execution, session upgrade, and privilege escalation to full SYSTEM access. The entire chain was executed using the Metasploit Framework, showcasing how its integrated modules handle each phase of an attack cohesively.
 
 ### Attack Chain Summary
 
 ```
 Nmap Scan
     └─► MSSQL 2012 SP3 on port 1433 identified
-            └─► mssql_login → sa: (blank password) — MSSQL session opened
+            └─► mssql_login → sa: (blank password): MSSQL session opened
                     └─► xp_cmdshell "dir C:\" → flag1.txt
                             └─► FLAG 1
 
