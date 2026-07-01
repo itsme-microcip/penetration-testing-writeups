@@ -7,13 +7,13 @@
 
 1. [Introduction](#1-introduction)
 2. [Lab Environment Overview](#2-lab-environment-overview)
-3. [Target 1 — Initial Reconnaissance](#3-target-1--initial-reconnaissance)
-4. [Flag 1 — SMB Credential Brute-Force and WebDAV Enumeration](#4-flag-1--smb-credential-brute-force-and-webdav-enumeration)
-5. [Flag 2 — ASP Webshell Upload and Remote Code Execution](#5-flag-2--asp-webshell-upload-and-remote-code-execution)
-6. [Target 2 — Initial Reconnaissance](#6-target-2--initial-reconnaissance)
-7. [Flag 3 — SMB Credential Brute-Force and C$ Share Enumeration](#7-flag-3--smb-credential-brute-force-and-c-share-enumeration)
-8. [Flag 4 — Administrator Desktop Enumeration via SMB](#8-flag-4--administrator-desktop-enumeration-via-smb)
-9. [Appendix A — Custom Scripts](#9-appendix-a--custom-scripts)
+3. [Target 1: Initial Reconnaissance](#3-target-1--initial-reconnaissance)
+4. [Flag 1: SMB Credential Brute-Force and WebDAV Enumeration](#4-flag-1--smb-credential-brute-force-and-webdav-enumeration)
+5. [Flag 2: ASP Webshell Upload and Remote Code Execution](#5-flag-2--asp-webshell-upload-and-remote-code-execution)
+6. [Target 2: Initial Reconnaissance](#6-target-2--initial-reconnaissance)
+7. [Flag 3: SMB Credential Brute-Force and C$ Share Enumeration](#7-flag-3--smb-credential-brute-force-and-c-share-enumeration)
+8. [Flag 4: Administrator Desktop Enumeration via SMB](#8-flag-4--administrator-desktop-enumeration-via-smb)
+9. [Appendix A: Custom Scripts](#9-appendix-a--custom-scripts)
 10. [Summary of Findings](#10-summary-of-findings)
 11. [Conclusions and Lessons Learned](#11-conclusions-and-lessons-learned)
 
@@ -67,13 +67,13 @@ All activities were performed within an isolated, authorised lab environment. No
 Capture four flags distributed across two Windows targets by applying system and host-based attack techniques. The hints provided for each flag were:
 
 - **Flag 1:** User `bob` may have a weak password; the flag is on Target 1.
-- **Flag 2:** Valuable files are often on the C: drive of Target 1 — explore it thoroughly.
+- **Flag 2:** Valuable files are often on the C: drive of Target 1, explore it thoroughly.
 - **Flag 3:** Guessing SMB credentials on Target 2 may uncover important information.
-- **Flag 4:** The Desktop directory on Target 2 may contain the flag — enumerate it.
+- **Flag 4:** The Desktop directory on Target 2 may contain the flag, enumerate it.
 
 ---
 
-## 3. Target 1 — Initial Reconnaissance
+## 3. Target 1: Initial Reconnaissance
 
 A full service version scan was performed against Target 1 to map all listening services and identify potential attack vectors.
 
@@ -102,7 +102,7 @@ Service Info: OS: Windows; CPE: cpe:/o:microsoft:windows
 
 The scan revealed a Windows host exposing several services of interest:
 
-- **HTTP (port 80):** A Microsoft IIS 10.0 web server — a primary attack surface for web-based exploitation techniques including WebDAV file upload.
+- **HTTP (port 80):** A Microsoft IIS 10.0 web server a primary attack surface for web-based exploitation techniques including WebDAV file upload.
 - **SMB (ports 139 and 445):** Windows file-sharing services, targeted first for credential brute-forcing.
 - **RDP (port 3389):** Remote Desktop Protocol, available as a potential post-exploitation access method.
 - **WinRM (port 5985):** Windows Remote Management, which could allow remote PowerShell execution with valid credentials.
@@ -112,7 +112,7 @@ The combination of an IIS web server and SMB on the same host suggested a dual a
 
 ---
 
-## 4. Flag 1 — SMB Credential Brute-Force and WebDAV Enumeration
+## 4. Flag 1: SMB Credential Brute-Force and WebDAV Enumeration
 
 ### Hint
 
@@ -192,7 +192,7 @@ gobuster dir -u http://target1.ine.local \
 /webdav          (Status: 301) --> http://target1.ine.local/webdav/
 ```
 
-Two directories were discovered. The `/webdav/` directory was of particular interest, as WebDAV (Web Distributed Authoring and Versioning) is an HTTP extension that allows clients to create, modify, and upload files on a web server — a significant capability if write access was available.
+Two directories were discovered. The `/webdav/` directory was of particular interest, as WebDAV (Web Distributed Authoring and Versioning) is an HTTP extension that allows clients to create, modify, and upload files on a web server a significant capability if write access was available.
 
 ### Step 5: Browse the WebDAV Directory and Retrieve Flag 1
 
@@ -207,9 +207,9 @@ Navigating to `http://target1.ine.local/webdav/` revealed the following director
 
 The `flag1.txt` file was accessed directly from the browser, yielding the first flag. Additional files of note:
 
-- `readme.txt` — contained the message `Hello! From INE :)`, confirming this was a lab-authored directory.
-- `test.asp` — returned the message `Classic ASP is enabled and working!`, a critical detail confirming server-side ASP script execution.
-- `web.config` — returned HTTP 404, likely restricted from direct serving.
+- `readme.txt`: contained the message `Hello! From INE :)`, confirming this was a lab-authored directory.
+- `test.asp`: returned the message `Classic ASP is enabled and working!`, a critical detail confirming server-side ASP script execution.
+- `web.config`: returned HTTP 404, likely restricted from direct serving.
 
 ### Flag Captured
 
@@ -219,7 +219,7 @@ FLAG1{######################################}
 
 ---
 
-## 5. Flag 2 — ASP Webshell Upload and Remote Code Execution
+## 5. Flag 2: ASP Webshell Upload and Remote Code Execution
 
 ### Hint
 
@@ -253,7 +253,7 @@ Navigating to the webshell URL in the browser presented an interactive command e
 | Server Software        | `Microsoft-IIS/10.0`           |
 | Execution Identity     | `iis apppool\defaultapppool`   |
 
-The webshell was executing in the context of the IIS application pool identity — a low-privileged service account, but sufficient to read files from the C: drive root.
+The webshell was executing in the context of the IIS application pool identity as a low-privileged service account, but sufficient to read files from the C: drive root.
 
 ### Step 3: Enumerate the C: Drive Root
 
@@ -281,7 +281,7 @@ The contents of `flag2.txt` were returned directly in the browser, yielding the 
 
 ### Analysis
 
-This flag required chaining two discoveries from the Flag 1 phase: the existence of a writable WebDAV directory and the confirmation that Classic ASP execution was enabled on the server. The HTTP PUT method allowed file upload without any additional authentication beyond the existing HTTP Basic credentials, and the ASP runtime executed the uploaded script with the IIS service account's permissions. This attack chain is representative of a well-known real-world vulnerability class — WebDAV-enabled IIS servers with write permissions and ASP execution enabled represent a significant and frequently exploited misconfiguration.
+This flag required chaining two discoveries from the Flag 1 phase: the existence of a writable WebDAV directory and the confirmation that Classic ASP execution was enabled on the server. The HTTP PUT method allowed file upload without any additional authentication beyond the existing HTTP Basic credentials, and the ASP runtime executed the uploaded script with the IIS service account's permissions. This attack chain is representative of a well-known real-world vulnerability class: WebDAV-enabled IIS servers with write permissions and ASP execution enabled represent a significant and frequently exploited misconfiguration.
 
 ### Flag Captured
 
@@ -291,7 +291,7 @@ FLAG2{######################################}
 
 ---
 
-## 6. Target 2 — Initial Reconnaissance
+## 6. Target 2: Initial Reconnaissance
 
 A full TCP port scan was performed against Target 2 to enumerate all listening services.
 
@@ -326,7 +326,7 @@ The absence of a web server indicated that the flags on this target would be acc
 
 ---
 
-## 7. Flag 3 — SMB Credential Brute-Force and C$ Share Enumeration
+## 7. Flag 3: SMB Credential Brute-Force and C$ Share Enumeration
 
 ### Hint
 
@@ -334,7 +334,7 @@ The absence of a web server indicated that the flags on this target would be acc
 
 ### Methodology
 
-With SMB as the primary service on Target 2, Hydra was used to conduct a multi-user credential brute-force attack across both a common username list and a Unix password wordlist. Unlike Target 1 — where the target username was provided — this required testing a broad set of candidates.
+With SMB as the primary service on Target 2, Hydra was used to conduct a multi-user credential brute-force attack across both a common username list and a Unix password wordlist. Unlike Target 1, where the target username was provided, this required testing a broad set of candidates.
 
 ### Step 1: Multi-User SMB Brute-Force with Hydra
 
@@ -376,7 +376,7 @@ Shared2         Disk
 Shared3         Disk
 ```
 
-In addition to the standard administrative shares, three custom shares (`Shared`, `Shared2`, `Shared3`) were present. With administrator credentials, access to the `C$` share — which maps directly to the root of the C: drive — was the most valuable target for flag discovery.
+In addition to the standard administrative shares, three custom shares (`Shared`, `Shared2`, `Shared3`) were present. With administrator credentials, access to the `C$` share, which maps directly to the root of the C: drive, was the most valuable target for flag discovery.
 
 ### Step 3: Access C$ and Retrieve Flag 3
 
@@ -396,7 +396,7 @@ The flag file was located directly in the root of the C: drive and was retrieved
 
 ### Analysis
 
-The recovery of the `administrator` account password — `pineapple` — through a standard wordlist brute-force demonstrates a common and critical misconfiguration in Windows environments: the use of weak, guessable passwords on the built-in Administrator account. Administrator credentials grant access to all administrative shares (`C$`, `ADMIN$`) as well as any custom shares on the system, making this the highest-impact finding of the lab. In a real-world engagement, recovery of the local Administrator password would typically lead to complete host compromise and, in many environments, lateral movement across the network via pass-the-hash or credential reuse techniques.
+The recovery of the `administrator` account password `pineapple` through a standard wordlist brute-force demonstrates a common and critical misconfiguration in Windows environments: the use of weak, guessable passwords on the built-in Administrator account. Administrator credentials grant access to all administrative shares (`C$`, `ADMIN$`) as well as any custom shares on the system, making this the highest-impact finding of the lab. In a real-world engagement, recovery of the local Administrator password would typically lead to complete host compromise and, in many environments, lateral movement across the network via pass-the-hash or credential reuse techniques.
 
 ### Flag Captured
 
@@ -406,7 +406,7 @@ FLAG3{######################################}
 
 ---
 
-## 8. Flag 4 — Administrator Desktop Enumeration via SMB
+## 8. Flag 4: Administrator Desktop Enumeration via SMB
 
 ### Hint
 
@@ -441,7 +441,7 @@ The flag file was retrieved directly from the Desktop directory via the SMB sess
 
 ### Analysis
 
-Files stored on a privileged user's Desktop are a high-value target in any penetration test, as administrators frequently store credentials, configuration files, notes, and sensitive documents in this location for convenience. Access to the Administrator Desktop via the `C$` administrative share is a direct consequence of the credential compromise achieved in the Flag 3 phase — reinforcing the principle that recovering a single high-privileged account's credentials can expose the entirety of a Windows host's file system.
+Files stored on a privileged user's Desktop are a high-value target in any penetration test, as administrators frequently store credentials, configuration files, notes, and sensitive documents in this location for convenience. Access to the Administrator Desktop via the `C$` administrative share is a direct consequence of the credential compromise achieved in the Flag 3 phase reinforcing the principle that recovering a single high-privileged account's credentials can expose the entirety of a Windows host's file system.
 
 ### Flag Captured
 
@@ -451,9 +451,9 @@ FLAG4{######################################}
 
 ---
 
-## 9. Appendix A — Custom Scripts
+## 9. Appendix A: Custom Scripts
 
-### A.1 — brute_smb_targeted.sh
+### A.1: brute_smb_targeted.sh
 
 This script was adapted from a prior lab exercise and modified to target a single known username (`bob`) against Target 1. It iterates through every password in the specified wordlist and uses `smbclient` to attempt authentication against an SMB share named after the user. A response that does not contain `NT_STATUS_LOGON_FAILURE` is interpreted as a successful login.
 
@@ -495,15 +495,15 @@ done
 
 ### Vulnerabilities Identified
 
-1. **Weak User Passwords Across Multiple Services (Target 1 — bob:password_123321)** — The account `bob` used a guessable password that was recoverable via a standard Unix wordlist. The same password was valid for both SMB and HTTP Basic Authentication, amplifying the impact of a single compromised credential.
+1. **Weak User Passwords Across Multiple Services (Target 1: bob:password_123321)**: The account `bob` used a guessable password that was recoverable via a standard Unix wordlist. The same password was valid for both SMB and HTTP Basic Authentication, amplifying the impact of a single compromised credential.
 
-2. **WebDAV Write Access with ASP Execution Enabled (Target 1)** — The `/webdav/` directory on the IIS server permitted authenticated file uploads via HTTP PUT, and the server was configured to execute Classic ASP scripts. This combination allowed an authenticated attacker to upload a functional webshell and achieve server-side remote code execution without requiring any exploitation of a software vulnerability.
+2. **WebDAV Write Access with ASP Execution Enabled (Target 1)**: The `/webdav/` directory on the IIS server permitted authenticated file uploads via HTTP PUT, and the server was configured to execute Classic ASP scripts. This combination allowed an authenticated attacker to upload a functional webshell and achieve server-side remote code execution without requiring any exploitation of a software vulnerability.
 
-3. **Weak Administrator Password (Target 2 — administrator:pineapple)** — The built-in Windows Administrator account on Target 2 used a trivially guessable password that appeared in a standard wordlist. This is the highest-severity finding in the lab, as Administrator credentials grant unrestricted access to all system resources.
+3. **Weak Administrator Password (Target 2: administrator:pineapple)**: The built-in Windows Administrator account on Target 2 used a trivially guessable password that appeared in a standard wordlist. This is the highest-severity finding in the lab, as Administrator credentials grant unrestricted access to all system resources.
 
-4. **Multiple Additional Weak Credentials (Target 2)** — Three additional accounts (`rooty:spongebob`, `demo:password1`, `auditor:hellokitty`) were also compromised during the same brute-force pass, indicating a systemic absence of password policy enforcement on the target system.
+4. **Multiple Additional Weak Credentials (Target 2)**: Three additional accounts (`rooty:spongebob`, `demo:password1`, `auditor:hellokitty`) were also compromised during the same brute-force pass, indicating a systemic absence of password policy enforcement on the target system.
 
-5. **Sensitive Files Stored in Accessible Locations** — On both targets, flag files were stored in highly accessible locations (the WebDAV directory, the C: drive root, and the Administrator Desktop) that are trivially reachable once credentials are obtained. In production environments, sensitive files in these locations represent a direct consequence of privileged account compromise.
+5. **Sensitive Files Stored in Accessible Locations**: On both targets, flag files were stored in highly accessible locations (the WebDAV directory, the C: drive root, and the Administrator Desktop) that are trivially reachable once credentials are obtained. In production environments, sensitive files in these locations represent a direct consequence of privileged account compromise.
 
 ---
 
@@ -542,7 +542,7 @@ Nmap Scan → SMB (port 445) primary service; no HTTP
 
 - **WebDAV with write permissions and script execution is a critical misconfiguration.** The combination of an HTTP PUT-writable directory and server-side script execution (ASP in this case) constitutes a direct path to remote code execution for any authenticated user. WebDAV should be disabled unless explicitly required, and write permissions should never overlap with executable directories.
 
-- **The built-in Administrator account is a high-value brute-force target.** Its password was recoverable from a standard wordlist in a single Hydra pass. The Administrator account should be renamed, disabled where possible, and — at minimum — protected by a long, randomly generated password not present in any wordlist.
+- **The built-in Administrator account is a high-value brute-force target.** Its password was recoverable from a standard wordlist in a single Hydra pass. The Administrator account should be renamed, disabled where possible, and, at minimum, protected by a long, randomly generated password not present in any wordlist.
 
 - **Full TCP port scans are essential for comprehensive assessment.** The fast scan and full scan produced different results across the two targets. Restricting scans to common ports risks missing critical services on non-standard ports, as was demonstrated by the hidden FTP service in a prior lab.
 
