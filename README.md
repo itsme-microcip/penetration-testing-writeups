@@ -25,6 +25,7 @@ Reports are organised by platform and module. New writeups are added progressive
 | Platform | Focus Area |
 |----------|------------|
 | [INE Security / eLearnSecurity](https://ine.com) | Network penetration testing, system attacks, vulnerability assessment, Metasploit |
+| [Hack-Academy](https://hackerblueprint.com/labs) | Active Directory penetration testing |
 
 ---
 
@@ -41,6 +42,8 @@ Reports are organised by platform and module. New writeups are added progressive
 ![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
 ![Bash](https://img.shields.io/badge/Bash-4EAA25?style=for-the-badge&logo=gnubash&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![NetExec](https://img.shields.io/badge/NetExec-6B2D8B?style=for-the-badge&logoColor=white)
+![BloodHound](https://img.shields.io/badge/BloodHound-8B0000?style=for-the-badge&logo=...&logoColor=white)   
 
 ---
 
