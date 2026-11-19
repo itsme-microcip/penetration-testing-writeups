@@ -26,6 +26,7 @@ Reports are organised by platform and module. New writeups are added progressive
 |----------|------------|
 | [INE Security / eLearnSecurity](https://ine.com) | Network penetration testing, system attacks, vulnerability assessment, Metasploit |
 | [Hack-Academy](https://hackerblueprint.com/labs) | Active Directory penetration testing |
+| [Web Security Academy](https://portswigger.net/web-security) | Web Application penetration testing |
 
 ---
 
